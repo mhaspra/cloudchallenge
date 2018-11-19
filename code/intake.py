@@ -18,7 +18,7 @@ def lambda_handler(event, context):
         response.append(
             sqs_client.send_message(
                 QueueUrl=responseQueueUrl,
-                MessageBody=message['body']
+                MessageBody=json.loads(message['body'])['message']
             )
         )
     
