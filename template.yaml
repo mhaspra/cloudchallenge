@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion : '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Cloud challenge solution
+
+Resources:
+  MessagesIntakeFunction:
+      Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction        
+      Properties:           
+        CodeUri: code/
+        Handler: intake.lambda_handler
+        Role: !GetAtt [MessagesIntakeFunctionIamRole, Arn ]
+        Runtime: python3.6
+        Environment:
+          Variables:
+            ResponseQueueUrl: !Sub 'https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/michiteam-ResponseQueue-13KIHHJI8TQ8G'
+        Events:
+          ReadFromQueue:
+            Type: SQS
+            Properties:
+              Queue: !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:michiteam-RequestQueue-RWB8Q2P5U5SG'
+              BatchSize: 1 
+
+  MessagesIntakeFunctionIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+        - PolicyName: ReadFromRequestQueue
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "sqs:ReceiveMessage"
+                  - "sqs:DeleteMessage"
+                  - "sqs:GetQueueAttributes"
+                Resource: !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:michiteam-RequestQueue-RWB8Q2P5U5SG'
+        - PolicyName: WriteToResponseQueue
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "sqs:SendMessage"
+                Resource: !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:michiteam-ResponseQueue-13KIHHJI8TQ8G'
+
+
+
+Outputs:
+    MessagesIntakeFunction:
+      Description: "Messages Intake Lambda Function ARN"
+      Value: !GetAtt MessagesIntakeFunction.Arn
+
+    MessagesIntakeFunctionIamRole:
+        Value: !GetAtt MessagesIntakeFunctionIamRole.Arn
